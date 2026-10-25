@@ -1,0 +1,142 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Rally Legends 9.0 – Autumn Stage</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#151e1b;color:#fff;font-family:system-ui,-apple-system,sans-serif}#view{width:100%;height:100%;display:block;touch-action:none}
+#hud{position:fixed;top:max(12px,env(safe-area-inset-top));left:16px;right:16px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;text-shadow:0 2px 8px #000d}
+#hud h1{font-size:clamp(13px,2.6vw,21px);letter-spacing:.18em;margin:0;color:#f3d29b}#hud small{display:block;margin-top:7px;letter-spacing:.12em}#speed{font-size:clamp(23px,5vw,42px);font-weight:800;text-align:right}#speed small{font-size:12px;font-weight:500}
+#controls{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:15px;right:15px;display:flex;justify-content:space-between;align-items:flex-end;gap:9px;touch-action:none}#controls .cluster{display:flex;gap:9px}button{border:1px solid #ffffff55;color:white;background:#15252ad9;border-radius:14px;min-width:68px;height:78px;font-size:16px;font-weight:800;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 5px 16px #0007}button:active,button.held{background:#8b724c;transform:translateY(2px)}button.pedal{height:108px;width:79px;border:3px solid #bba77e;border-radius:18px 18px 26px 26px;background:linear-gradient(#716147,#312e28);font-size:14px}#info{position:fixed;left:50%;top:19%;transform:translateX(-50%);background:#101b1bdc;border:1px solid #ffffff33;padding:12px 18px;border-radius:14px;max-width:90vw;text-align:center;line-height:1.4;font-size:14px}#menu{position:fixed;top:78px;right:15px;display:flex;gap:8px}#menu button{height:42px;min-width:58px;font-size:12px;padding:0 10px}#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#142019ee;z-index:8;text-align:center;padding:30px;font-size:17px}#loading strong{display:block;font-size:24px;margin-bottom:12px}#loading span{color:#e4bd83}#hint{position:fixed;bottom:125px;left:50%;transform:translateX(-50%);font-size:11px;color:#f4f1e9ad;white-space:nowrap;pointer-events:none}
+@media(max-width:640px){#info{top:23%;font-size:12px}#controls{gap:5px}button{min-width:55px;height:66px}button.pedal{height:88px;width:64px}#menu{top:95px}#hint{bottom:105px}}
+</style></head><body>
+<canvas id="view"></canvas><div id="loading"><div><strong>RALLY LEGENDS 9.0</strong><span>Lade Herbstwald und Rallyeauto …</span><p id="loadDetail" style="font-size:12px;color:#fff9"></p></div></div>
+<div id="hud"><div><h1>RALLY LEGENDS 9.0</h1><small>AUTUMN STAGE · VISUAL PROTOTYPE</small></div><div id="speed">0<small> km/h</small></div></div>
+<div id="menu"><button id="cam">KAMERA</button><button id="quality">GRAFIK: HOCH</button></div>
+<div id="info">Herbst-Rallye mit Wald, Schotter, Leitplanken und tiefem Abendlicht.<br>Gas drücken und die Strecke ansehen.</div>
+<div id="hint">Grafik-Prototyp · noch kein WRC-Fotorealismus</div>
+<div id="controls"><div class="cluster"><button data-key="left">◀</button><button data-key="right">▶</button></div><div class="cluster"><button class="pedal" data-key="brake">▥<br>BREMSE</button><button class="pedal" data-key="gas">▥<br>GAS</button></div></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const $=id=>document.getElementById(id);
+const canvas=$('view');const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xadb6b5);scene.fog=new THREE.FogExp2(0xaab4b0,.0024);
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.15,1100);
+const hemi=new THREE.HemisphereLight(0xc7d8e4,0x40352b,1.4);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xffb76c,3.7);sun.position.set(-120,90,-160);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-105;sun.shadow.camera.right=105;sun.shadow.camera.top=105;sun.shadow.camera.bottom=-105;sun.shadow.camera.near=1;sun.shadow.camera.far=420;sun.shadow.bias=-.0003;scene.add(sun);scene.add(sun.target);
+const loader=new THREE.TextureLoader();
+function tex(file,rx=1,ry=1){const t=loader.load('assets/'+file);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx,ry);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t}
+function norm(file,rx=1,ry=1){const t=loader.load('assets/'+file);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx,ry);return t}
+const gravel=new THREE.MeshStandardMaterial({map:tex('gravel_albedo.jpg',2,130),normalMap:norm('gravel_normal.jpg',2,130),normalScale:new THREE.Vector2(.65,.65),roughness:1});
+const grass=new THREE.MeshStandardMaterial({map:tex('grass_albedo.jpg',36,36),normalMap:norm('grass_normal.jpg',36,36),normalScale:new THREE.Vector2(.25,.25),roughness:1});
+const soil=new THREE.MeshStandardMaterial({map:tex('soil_albedo.jpg',1,55),roughness:1});
+const rockMat=new THREE.MeshStandardMaterial({color:0x747971,roughness:1,flatShading:false});
+let seed=1223;function rnd(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+const roadLength=3400,step=5,roadHalf=4.5;
+function path(s){return {x:32*Math.sin(s*.0038)+18*Math.sin(s*.0081)+7*Math.sin(s*.016),z:-s,y:4.8*Math.sin(s*.004)+2.6*Math.sin(s*.011)+.00045*s}}
+function height(x,z){const s=-z;const p=path(s);const d=x-p.x;return p.y-.20+Math.min(30,Math.abs(d)*.032)+2.5*Math.sin(x*.018+z*.009)+1.7*Math.cos(x*.031-z*.015)+.9*Math.sin(x*.065+z*.024)}
+function roadY(s){return path(s).y+.12}
+function direction(s){const a=path(s-1),b=path(s+1);return new THREE.Vector3(b.x-a.x,b.y-a.y,b.z-a.z).normalize()}
+function normal(s){const d=direction(s);return new THREE.Vector3(-d.z,0,d.x).normalize()}
+function makeStrip(width,material,yOff=0){const vertices=[],uv=[],index=[];for(let s=0;s<=roadLength;s+=step){const p=path(s),n=normal(s);for(let side of [-1,1]){vertices.push(p.x+n.x*width*side,p.y+yOff,p.z+n.z*width*side);uv.push(side===-1?0:1,s/16)}}const count=roadLength/step+1;for(let i=0;i<count-1;i++){const k=i*2;index.push(k,k+1,k+2,k+1,k+3,k+2)}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(index);g.computeVertexNormals();const m=new THREE.Mesh(g,material);m.receiveShadow=true;scene.add(m);return m}
+const terrainV=[],terrainUV=[],terrainIdx=[];const cols=81,rows=341;
+for(let j=0;j<rows;j++){let s=j*10;const p=path(s);for(let i=0;i<cols;i++){const off=(i/(cols-1)-.5)*340;const x=p.x+off;const z=p.z;terrainV.push(x,height(x,z)-.28,z);terrainUV.push(x/12,z/12)}}
+for(let j=0;j<rows-1;j++)for(let i=0;i<cols-1;i++){const a=j*cols+i,b=a+cols;terrainIdx.push(a,b,a+1,a+1,b,b+1)}
+const tg=new THREE.BufferGeometry();tg.setAttribute('position',new THREE.Float32BufferAttribute(terrainV,3));tg.setAttribute('uv',new THREE.Float32BufferAttribute(terrainUV,2));tg.setIndex(terrainIdx);tg.computeVertexNormals();
+const ground=new THREE.Mesh(tg,grass);ground.receiveShadow=true;scene.add(ground);
+makeStrip(roadHalf+1.3,soil,.03);makeStrip(roadHalf,gravel,.075);
+const lineMat=new THREE.MeshStandardMaterial({color:0x6c5b4b,roughness:1});
+for(let side of [-1,1]){const v=[],ix=[];for(let s=0;s<=roadLength;s+=step){const p=path(s),n=normal(s);for(const d of [2.2,2.29])v.push(p.x+n.x*d*side,p.y+.089,p.z+n.z*d*side)}for(let i=0;i<roadLength/step;i++){const a=i*2;ix.push(a,a+1,a+2,a+1,a+3,a+2)}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setIndex(ix);g.computeVertexNormals();const m=new THREE.Mesh(g,lineMat);m.receiveShadow=true;scene.add(m)}
+// Real 3D forest: varied layered branch clusters, irregular trunk geometry, instanced for mobile performance.
+const trunkMat=new THREE.MeshStandardMaterial({color:0x514a37,roughness:1});
+const needleMats=[0x20352b,0x31412f,0x4d5133,0x5d5137].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:1,flatShading:false}));
+const pineGeos=[];
+for(let k=0;k<3;k++){
+ const geo=new THREE.ConeGeometry(1,2.7,9,6);
+ const a=geo.attributes.position;
+ for(let i=0;i<a.count;i++){const x=a.getX(i),y=a.getY(i),z=a.getZ(i);const theta=Math.atan2(z,x);const f=1+.16*Math.sin(theta*7+y*11+k)+.08*Math.cos(theta*13-y*9);a.setXYZ(i,x*f,y+.06*Math.sin(theta*9+y*8),z*f)}
+ geo.computeVertexNormals();pineGeos.push(geo)
+}
+const count=4300,forest=[],dummy=new THREE.Object3D();
+for(let k=0;k<3;k++){const foliage=new THREE.InstancedMesh(pineGeos[k],needleMats[k%needleMats.length],count);foliage.castShadow=k===0;foliage.receiveShadow=true;foliage.frustumCulled=false;scene.add(foliage);forest.push(foliage)}
+const trunks=new THREE.InstancedMesh(new THREE.CylinderGeometry(.13,.22,1,7),trunkMat,count);trunks.castShadow=true;trunks.frustumCulled=false;scene.add(trunks);
+for(let i=0;i<count;i++){const s=rnd()*roadLength,p=path(s),side=rnd()<.5?-1:1,d=roadHalf+6+rnd()*155;const x=p.x+d*side,z=p.z+(rnd()-.5)*12,y=height(x,z);const tall=6+rnd()*13,wide=1.2+rnd()*1.6;const rot=rnd()*Math.PI*2;
+ for(let k=0;k<3;k++){dummy.position.set(x,y+1.8+k*tall*.19,z);dummy.rotation.set(0,rot,0);dummy.scale.set(wide*(1-k*.21),tall*.46,wide*(1-k*.21));dummy.updateMatrix();forest[k].setMatrixAt(i,dummy.matrix)}
+ dummy.position.set(x,y+tall*.32,z);dummy.rotation.set(0,rot,0);dummy.scale.set(1,tall*.64,1);dummy.updateMatrix();trunks.setMatrixAt(i,dummy.matrix)
+}
+forest.forEach(m=>m.instanceMatrix.needsUpdate=true);trunks.instanceMatrix.needsUpdate=true;
+// Additional deciduous trees with autumn foliage and nonuniform multi-lobed crowns.
+const leafColors=[0x7d4a2c,0x9b6436,0x6f6338,0x5d693f,0xb17b3c,0x745a32];
+const deciduous=new THREE.Group();scene.add(deciduous);
+const crownGeo=new THREE.IcosahedronGeometry(1,2);
+const branchGeo=new THREE.CylinderGeometry(.12,.22,1,6);
+const leafMeshes=leafColors.map(c=>{const m=new THREE.InstancedMesh(crownGeo,new THREE.MeshStandardMaterial({color:c,roughness:1,flatShading:false}),420);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;deciduous.add(m);return m});
+const branches=new THREE.InstancedMesh(branchGeo,trunkMat,420);branches.castShadow=true;branches.frustumCulled=false;deciduous.add(branches);
+const crownCounts=leafColors.map(()=>0);
+for(let i=0;i<420;i++){
+ const s=rnd()*roadLength,p=path(s),side=rnd()<.5?-1:1,dist=roadHalf+9+rnd()*100;
+ const x=p.x+side*dist,z=p.z+(rnd()-.5)*8,y=height(x,z),h=7+rnd()*10;
+ dummy.position.set(x,y+h*.52,z);dummy.rotation.set(0,rnd()*6,0);dummy.scale.set(1,h*.92,1);dummy.updateMatrix();branches.setMatrixAt(i,dummy.matrix);
+ const c=Math.floor(rnd()*leafMeshes.length),n=crownCounts[c]++;
+ if(n<420){dummy.position.set(x,y+h*.91,z);dummy.rotation.set(rnd(),rnd()*6,rnd());dummy.scale.set(2.1+rnd()*1.8,2.8+rnd()*2.2,2+rnd()*1.8);dummy.updateMatrix();leafMeshes[c].setMatrixAt(n,dummy.matrix)}
+}
+leafMeshes.forEach((m,i)=>{m.count=crownCounts[i];m.instanceMatrix.needsUpdate=true});branches.instanceMatrix.needsUpdate=true;
+// Roadside undergrowth: grass clumps and low shrubs.
+const shrubGeo=new THREE.IcosahedronGeometry(1,1),shrubMat=new THREE.MeshStandardMaterial({color:0x48533a,roughness:1});
+const shrubs=new THREE.InstancedMesh(shrubGeo,shrubMat,1800);shrubs.frustumCulled=false;scene.add(shrubs);
+for(let i=0;i<1800;i++){const s=rnd()*roadLength,p=path(s),side=rnd()<.5?-1:1,dist=roadHalf+1.5+rnd()*42;const x=p.x+side*dist,z=p.z+(rnd()-.5)*4,y=height(x,z);dummy.position.set(x,y+.28,z);dummy.rotation.set(0,rnd()*6,0);dummy.scale.set(.25+rnd()*.55,.22+rnd()*.35,.3+rnd()*.55);dummy.updateMatrix();shrubs.setMatrixAt(i,dummy.matrix)}shrubs.instanceMatrix.needsUpdate=true;
+// Steel guardrail sections on outer edges of selected bends.
+const guardMetal=new THREE.MeshStandardMaterial({color:0x8d8e88,metalness:.73,roughness:.38});
+const railGeo=new THREE.BoxGeometry(.12,.26,3.8);
+const postG=new THREE.BoxGeometry(.12,.75,.12);
+const guardGroup=new THREE.Group();scene.add(guardGroup);
+for(let s=160;s<roadLength-200;s+=8){
+ if(!(s%470<170))continue;
+ const p=path(s),n=normal(s),d=direction(s),side=(Math.floor(s/470)%2)?1:-1;
+ const x=p.x+n.x*side*6.8,z=p.z+n.z*side*6.8;
+ const beam=new THREE.Mesh(railGeo,guardMetal);beam.position.set(x,p.y+.72,z);beam.rotation.y=Math.atan2(d.x,d.z);beam.castShadow=true;guardGroup.add(beam);
+ if(s%16<8){const post=new THREE.Mesh(postG,guardMetal);post.position.set(x,p.y+.38,z);post.castShadow=true;guardGroup.add(post)}
+}
+// Real irregular rocks, roadside bushes, and marker posts.
+const rockGeo=new THREE.IcosahedronGeometry(1,1),rockCount=420,rocks=new THREE.InstancedMesh(rockGeo,rockMat,rockCount);rocks.castShadow=true;rocks.receiveShadow=true;rocks.frustumCulled=false;scene.add(rocks);
+for(let i=0;i<rockCount;i++){const s=rnd()*roadLength,p=path(s),d=(roadHalf+4+rnd()*120)*(rnd()<.5?-1:1),x=p.x+d,z=p.z+(rnd()-.5)*14;dummy.position.set(x,height(x,z)+.2,z);dummy.rotation.set(rnd()*2,rnd()*6,rnd()*2);const r=.35+rnd()*2.1;dummy.scale.set(r*1.3,r*.55,r);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix)}rocks.instanceMatrix.needsUpdate=true;
+const postGeo=new THREE.BoxGeometry(.13,.8,.12),postMat=new THREE.MeshStandardMaterial({color:0xded9c9}),posts=new THREE.InstancedMesh(postGeo,postMat,300);posts.castShadow=true;posts.frustumCulled=false;scene.add(posts);
+for(let i=0;i<300;i++){const s=(i>>1)*22+15,p=path(s),n=normal(s),side=i%2?1:-1;dummy.position.set(p.x+n.x*side*7,p.y+.4,p.z+n.z*side*7);dummy.rotation.set(0,0,0);dummy.scale.set(1,1,1);dummy.updateMatrix();posts.setMatrixAt(i,dummy.matrix)}posts.instanceMatrix.needsUpdate=true;
+const red=new THREE.MeshStandardMaterial({color:0xd45b41}),caps=new THREE.InstancedMesh(new THREE.BoxGeometry(.15,.14,.15),red,300);scene.add(caps);
+for(let i=0;i<300;i++){posts.getMatrixAt(i,dummy.matrix);dummy.matrix.decompose(dummy.position,dummy.quaternion,dummy.scale);dummy.position.y+=.36;dummy.updateMatrix();caps.setMatrixAt(i,dummy.matrix)}caps.instanceMatrix.needsUpdate=true;
+// Load actual separate GLB, not a procedural substitute masquerading as a model.
+let car=new THREE.Group(),modelLoaded=false;scene.add(car);
+const gltf=new GLTFLoader();
+function loadCar(){return new Promise((resolve,reject)=>gltf.load('assets/audi_rally.glb',g=>{const model=g.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material){o.material.side=THREE.FrontSide}}});model.rotation.y=Math.PI;car.add(model);modelLoaded=true;resolve()},undefined,reject))}
+let pos=80,lateral=0,speed=0,heading=0,camMode=0,qualityHigh=true,prev=performance.now();
+const input={left:false,right:false,gas:false,brake:false};
+for(const b of document.querySelectorAll('[data-key]')){const k=b.dataset.key;const on=e=>{e.preventDefault();input[k]=true;b.classList.add('held');b.setPointerCapture(e.pointerId)};const off=e=>{e.preventDefault();input[k]=false;b.classList.remove('held')};b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('lostpointercapture',off)}
+const keys={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'gas',ArrowDown:'brake',a:'left',d:'right',w:'gas',s:'brake'};
+addEventListener('keydown',e=>{if(keys[e.key]){input[keys[e.key]]=true;e.preventDefault()}});addEventListener('keyup',e=>{if(keys[e.key])input[keys[e.key]]=false});
+$('cam').onclick=()=>camMode=(camMode+1)%3;
+$('quality').onclick=()=>{qualityHigh=!qualityHigh;renderer.setPixelRatio(Math.min(devicePixelRatio,qualityHigh?1.6:1));sun.castShadow=qualityHigh;renderer.shadowMap.enabled=qualityHigh;$('quality').textContent=qualityHigh?'GRAFIK: HOCH':'GRAFIK: SPAR'};
+function frame(now){requestAnimationFrame(frame);const dt=Math.min(.045,(now-prev)/1000||.016);prev=now;
+ const acc=input.gas?7.8:0,brake=input.brake?16:0;
+ speed=Math.max(0,Math.min(42,speed+(acc-brake-1.15-speed*.013)*dt));
+ const steer=(input.right?1:0)-(input.left?1:0);
+ lateral+=steer*dt*(2.3+speed*.17);lateral*=Math.exp(-dt*.13);lateral=Math.max(-27,Math.min(27,lateral));
+ const offRoad=Math.abs(lateral)>roadHalf-.4;if(offRoad)speed=Math.max(0,speed-3.2*dt);
+ pos=Math.min(roadLength-60,pos+speed*dt);
+ const p=path(pos),n=normal(pos),d=direction(pos);
+ car.position.set(p.x+n.x*lateral,p.y+.04,p.z+n.z*lateral);
+ const angle=Math.atan2(d.x,-d.z);car.rotation.set(-Math.atan2(d.y,Math.hypot(d.x,d.z))*.4,angle+Math.PI+steer*.06,steer*-.025);
+ const follow=camMode===0?8:camMode===1?5:16,up=camMode===0?3.5:camMode===1?2.6:7;
+ const behind=new THREE.Vector3(-d.x*follow,up,-d.z*follow);
+ const goal=car.position.clone().add(behind);
+ camera.position.lerp(goal,Math.min(1,dt*4.5));
+ const look=car.position.clone().addScaledVector(d,camMode===2?25:12);look.y+=1.45;
+ camera.lookAt(look);
+ sun.position.set(car.position.x-120,car.position.y+90,car.position.z-160);sun.target.position.copy(car.position);sun.target.updateMatrixWorld();
+ $('speed').innerHTML=Math.round(speed*3.6)+'<small> km/h</small>';
+ renderer.render(scene,camera)
+}
+function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}addEventListener('resize',resize);
+loadCar().then(()=>{$('loading').remove();requestAnimationFrame(frame)}).catch(e=>{$('loading').innerHTML='<div><strong>3D-Modell konnte nicht geladen werden</strong>Prüfe, ob <code>assets/audi_rally.glb</code> im GitHub-Projekt vorhanden ist.<p>'+String(e.message||e)+'</p></div>';console.error(e)});
+</script></body></html>
